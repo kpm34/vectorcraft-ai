@@ -1,0 +1,5 @@
+{
+  "name": "VectorCraft AI",
+  "description": "A smart SVG editor that allows you to upload, draw, smooth lines, and use AI to edit and recolor vector graphics.",
+  "requestFramePermissions": []
+}
