@@ -1065,7 +1065,7 @@ function App() {
 
   return (
     <div
-      className="w-screen h-screen bg-zinc-950 overflow-hidden flex flex-col relative"
+      className="w-screen h-screen bg-grey-bg-900 overflow-hidden flex flex-col relative"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -1154,26 +1154,26 @@ function App() {
       {/* Context Menu */}
       {contextMenu && (
         <div
-          className="fixed bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl py-1 z-[60] min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+          className="fixed bg-grey-bg-800 border border-grey-bg-700 rounded-lg shadow-xl py-1 z-[60] min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={() => duplicateSelected()}
-            className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center justify-between group"
+            className="w-full text-left px-4 py-2 text-sm text-bone-200 hover:bg-grey-bg-700 hover:text-bone-50 flex items-center justify-between group"
           >
             <span className="flex items-center gap-2"><Copy size={14} /> Duplicate</span>
-            <span className="text-zinc-600 text-xs font-mono group-hover:text-zinc-500">Ctrl+D</span>
+            <span className="text-bone-400 text-xs font-mono group-hover:text-bone-300">Ctrl+D</span>
           </button>
 
           <button
             onClick={() => flipSelected()}
-            className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center gap-2 group"
+            className="w-full text-left px-4 py-2 text-sm text-bone-200 hover:bg-grey-bg-700 hover:text-bone-50 flex items-center gap-2 group"
           >
             <FlipHorizontal size={14} /> Flip Horizontal
           </button>
 
-          <div className="h-px bg-zinc-800 my-1"></div>
+          <div className="h-px bg-grey-bg-700 my-1"></div>
 
           <button
             onClick={() => {
@@ -1185,13 +1185,13 @@ function App() {
             className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 flex items-center justify-between group"
           >
              <span className="flex items-center gap-2"><Trash2 size={14} /> Delete</span>
-             <span className="text-zinc-600 text-xs font-mono group-hover:text-red-300/50">Del</span>
+             <span className="text-bone-400 text-xs font-mono group-hover:text-red-300/50">Del</span>
           </button>
         </div>
       )}
 
       {/* Canvas Area */}
-      <div className="flex-1 relative bg-gray-100 overflow-hidden">
+      <div className="flex-1 relative bg-bone-50 overflow-hidden">
         
         {/* Custom Eraser Cursor */}
         {tool === Tool.ERASER && (
