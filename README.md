@@ -1,20 +1,26 @@
 # VectorCraft AI
 
-**A lightweight vector workstation for logos, icons, and makers.**
+**Everything a 3D artist needs from vectors before they hit the viewport.**
 
-Convert images to SVG, normalize icon systems, and export production-ready code. Built for front-end developers and UI designers.
+The precision SVG editor for logos, decals, and UI overlays. Clean, optimize, and export 3D-ready assets. Built for Blender artists, game developers, and front-end designers.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/kpm34/vectorcraft-ai)
 
 ## 🎯 Features
 
+### 3D-Ready Exports
+- **Decal Pack** - High-res PNGs (512px → 4K) with transparency
+- **Sticker Borders** - White/black outlines for helmets, jerseys, stadiums
+- **Blender Curves Pack** - Optimized SVG (no intersections, joined paths)
+- **Auto-Extrude Ready** - Perfect for logos, signage, 3D text
+
 ### Web Workstation
 - **Interactive SVG Editor** - Draw, edit, and manipulate vectors
 - **AI Vectorization** - Convert PNG/JPG to SVG with Google Gemini
+- **HTML-to-Design** - Import any website as reference layer
 - **Icon Normalization** - Standardize viewBox, auto-center, enforce padding
 - **Developer Exports** - React/Vue components, JSX, sprite sheets
 - **SVG Optimizer** - Reduce file size, clean code output
-- **Multi-format Export** - SVG, PNG, PDF, code
 
 ### CLI Tool
 ```bash
@@ -107,10 +113,22 @@ vectorcraft-ai/
 └── index.html        # Entry point
 ```
 
+### Blender Add-on
+**VectorCraft Bridge** - Send curves to VectorCraft, get cleaned SVG back
+- Export Blender curves → Clean in VectorCraft → Import with auto-extrude
+- Perfect for logos on helmets, jerseys, stadium signage
+- See [`blender-addon/README.md`](./blender-addon/README.md)
+
 ## 🎨 Use Cases
 
-- **Logos & Brand Assets** - Convert and optimize logos for any platform
-- **Icons & UI Assets** - Build consistent icon systems
+### 3D Graphics & Game Development
+- **Helmet & Jersey Decals** - Clean logos with sticker borders for sports games
+- **Stadium Signage** - Optimize brand logos for 3D environments
+- **HUD & Scoreboards** - Create UI overlays and in-game graphics
+- **3D Text & Logos** - Export clean curves for Blender extrusion
+
+### Web & App Development
+- **Icon Systems** - Normalize and export production-ready icon sets
 - **SaaS Integration** - Embed SVG conversion in your product
 - **Agency Workflows** - Script bulk asset conversions
 - **Build Pipelines** - Automate asset optimization in CI/CD
