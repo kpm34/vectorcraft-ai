@@ -1,5 +1,5 @@
 import React from 'react';
-import { TextureMode, ModelQuality, GeneratedTextureSet } from '../types';
+import { TextureMode, ModelQuality, GeneratedTextureSet } from '../../lib/types/types';
 import { Wand2, Download, Layers, Circle, Box as BoxIcon, Aperture, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 
 interface ControlPanelProps {

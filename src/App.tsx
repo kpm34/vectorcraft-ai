@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Viewer3D } from './components/Viewer3D';
 import { ControlPanel } from './components/ControlPanel';
-import { GeneratedTextureSet, GenerationConfig, TextureMode, ModelQuality } from './types';
-import { generateTextureImage } from './services/geminiService';
-import { generateNormalMap, generateRoughnessMap } from './services/imageProcessing';
+import { GeneratedTextureSet, GenerationConfig, TextureMode, ModelQuality } from '../lib/types/types';
+import { generateTextureImage } from '../lib/services/geminiService';
+import { generateNormalMap, generateRoughnessMap } from '../lib/services/imageProcessing';
 import { Aperture, ArrowRight, Lock, Sparkles } from 'lucide-react';
 
 export default function App() {

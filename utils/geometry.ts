@@ -1,5 +1,5 @@
 
-import { Point, PathData, ShapeType } from '../types';
+import { Point, PathData, ShapeType } from '../lib/types/types';
 
 // Convert an array of points to a standard SVG path string using straight lines
 export const pointsToLinedPath = (points: Point[]): string => {

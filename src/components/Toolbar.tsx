@@ -22,7 +22,7 @@ import {
   PaintBucket,
   Brush
 } from 'lucide-react';
-import { Tool, ShapeType } from '../types';
+import { Tool, ShapeType } from '../../lib/types/types';
 
 interface ToolbarProps {
   currentTool: Tool;

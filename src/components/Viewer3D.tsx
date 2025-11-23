@@ -2,7 +2,7 @@ import React, { Suspense, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stage, useTexture, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { TextureMode } from '../types';
+import { TextureMode } from '../../lib/types/types';
 import { Loader2 } from 'lucide-react';
 
 interface Viewer3DProps {

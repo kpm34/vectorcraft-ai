@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { TextureMode, ModelQuality } from "../types";
+import { TextureMode, ModelQuality } from "../types/types";
 
 export const generateTextureImage = async (
   prompt: string,

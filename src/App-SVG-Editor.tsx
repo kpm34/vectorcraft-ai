@@ -8,23 +8,23 @@ import VectorizationModal from './components/VectorizationModal';
 import CodeExportModal from './components/CodeExportModal';
 import UrlImportModal from './components/UrlImportModal';
 import LandingPage from './components/LandingPage';
-import { Tool, PathData, Point, ShapeType } from './types';
-import { 
-  pointsToLinedPath, 
-  pointsToSmoothedPath, 
-  parseSvgToPaths, 
-  getShapePoints, 
-  getDistanceToPath, 
-  isPathInRect, 
-  isPointInPolygon, 
-  getBoundingBox, 
-  eraseFromPath, 
+import { Tool, PathData, Point, ShapeType } from '../lib/types/types';
+import {
+  pointsToLinedPath,
+  pointsToSmoothedPath,
+  parseSvgToPaths,
+  getShapePoints,
+  getDistanceToPath,
+  isPathInRect,
+  isPointInPolygon,
+  getBoundingBox,
+  eraseFromPath,
   getTextDimensions,
   getCombinedBoundingBox,
   rotatePoint,
   scalePoint
-} from './utils/geometry';
-import { processSvgWithAi, bitmapToSvg, VectorizeConfig } from './services/gemini';
+} from '../utils/geometry';
+import { processSvgWithAi, bitmapToSvg, VectorizeConfig } from '../lib/services/gemini';
 import { Upload, Copy, Trash2, RotateCw, FlipHorizontal } from 'lucide-react';
 
 function App() {
