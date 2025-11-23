@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import AiPromptModal from './components/AiPromptModal';
 import VectorizationModal from './components/VectorizationModal';
 import CodeExportModal from './components/CodeExportModal';
+import LandingPage from './components/LandingPage';
 import { Tool, PathData, Point, ShapeType } from './types';
 import { 
   pointsToLinedPath, 
@@ -23,9 +24,12 @@ import {
   scalePoint
 } from './utils/geometry';
 import { processSvgWithAi, bitmapToSvg, VectorizeConfig } from './services/gemini';
-import { Upload, Copy, Trash2, RotateCw } from 'lucide-react';
+import { Upload, Copy, Trash2, RotateCw, FlipHorizontal } from 'lucide-react';
 
 function App() {
+  // View State
+  const [showLanding, setShowLanding] = useState<boolean>(true);
+
   const [tool, setTool] = useState<Tool>(Tool.SELECT);
   const [shapeType, setShapeType] = useState<ShapeType>('rectangle');
   const [color, setColor] = useState<string>('#000000'); // Default to black for light canvas
@@ -111,9 +115,9 @@ function App() {
 
   const duplicateSelected = useCallback(() => {
     if (selectedPathIds.size === 0) return;
-    
+
     saveStateToUndo();
-    
+
     const newPaths: PathData[] = [];
     const newSelectedIds = new Set<string>();
     const offset = 20 * (viewBox.w / (svgRef.current?.clientWidth || 1000)); // Dynamic offset based on zoom
@@ -122,7 +126,7 @@ function App() {
       if (selectedPathIds.has(p.id)) {
         const newId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
         const newPoints = p.points.map(pt => ({ x: pt.x + offset, y: pt.y + offset }));
-        
+
         newPaths.push({
           ...p,
           id: newId,
@@ -136,6 +140,33 @@ function App() {
     setSelectedPathIds(newSelectedIds);
     setContextMenu(null);
   }, [paths, selectedPathIds, saveStateToUndo, viewBox.w]);
+
+  const flipSelected = useCallback(() => {
+    if (selectedPathIds.size === 0) return;
+
+    saveStateToUndo();
+
+    // Get the combined bounding box of all selected items
+    const selectedPaths = paths.filter(p => selectedPathIds.has(p.id));
+    const bounds = getCombinedBoundingBox(selectedPaths);
+
+    // Calculate the center X coordinate
+    const centerX = bounds.x + bounds.w / 2;
+    const center = { x: centerX, y: bounds.y + bounds.h / 2 };
+
+    // Flip all selected paths horizontally (scale X by -1)
+    setPaths(prev => prev.map(p => {
+      if (selectedPathIds.has(p.id)) {
+        return {
+          ...p,
+          points: p.points.map(pt => scalePoint(pt, center, -1, 1))
+        };
+      }
+      return p;
+    }));
+
+    setContextMenu(null);
+  }, [paths, selectedPathIds, saveStateToUndo]);
 
   // --- Keyboard Shortcuts ---
   useEffect(() => {
@@ -1002,8 +1033,13 @@ function App() {
   const handleSize = 8 / getZoomScale();
   const rotationHandleDist = 20 / getZoomScale();
 
+  // Show landing page if user hasn't entered the editor yet
+  if (showLanding) {
+    return <LandingPage onNavigateToCanvas={() => setShowLanding(false)} />;
+  }
+
   return (
-    <div 
+    <div
       className="w-screen h-screen bg-zinc-950 overflow-hidden flex flex-col relative"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -1085,28 +1121,35 @@ function App() {
 
       {/* Context Menu */}
       {contextMenu && (
-        <div 
+        <div
           className="fixed bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl py-1 z-[60] min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
           style={{ top: contextMenu.y, left: contextMenu.x }}
-          onClick={(e) => e.stopPropagation()} 
+          onClick={(e) => e.stopPropagation()}
         >
-          <button 
-            onClick={() => duplicateSelected()} 
+          <button
+            onClick={() => duplicateSelected()}
             className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center justify-between group"
           >
             <span className="flex items-center gap-2"><Copy size={14} /> Duplicate</span>
             <span className="text-zinc-600 text-xs font-mono group-hover:text-zinc-500">Ctrl+D</span>
           </button>
-          
+
+          <button
+            onClick={() => flipSelected()}
+            className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center gap-2 group"
+          >
+            <FlipHorizontal size={14} /> Flip Horizontal
+          </button>
+
           <div className="h-px bg-zinc-800 my-1"></div>
-          
-          <button 
+
+          <button
             onClick={() => {
                saveStateToUndo();
                setPaths(prev => prev.filter(p => !selectedPathIds.has(p.id)));
                setSelectedPathIds(new Set());
                setContextMenu(null);
-            }} 
+            }}
             className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 flex items-center justify-between group"
           >
              <span className="flex items-center gap-2"><Trash2 size={14} /> Delete</span>
