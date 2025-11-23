@@ -1,0 +1,36 @@
+{
+  "name": "@vectorcraft/cli",
+  "version": "1.0.0",
+  "description": "VectorCraft AI CLI - Convert images to SVG from the command line",
+  "main": "dist/index.js",
+  "bin": {
+    "svgify": "./bin/svgify.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node bin/svgify.js"
+  },
+  "keywords": [
+    "svg",
+    "vector",
+    "convert",
+    "cli",
+    "vectorcraft",
+    "image-to-svg",
+    "logo",
+    "icon"
+  ],
+  "author": "VectorCraft AI",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^5.8.2"
+  }
+}

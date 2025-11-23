@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Zap, Code, FileImage, Wand2, Download, Grid3x3, Layers, BoxSelect, Package } from 'lucide-react';
+import { Sparkles, Zap, Code, FileImage, Wand2, Download, Grid3x3, Layers, BoxSelect, Package, Terminal, Rocket } from 'lucide-react';
 
 interface LandingPageProps {
   onNavigateToCanvas: () => void;
@@ -187,6 +187,114 @@ function LandingPage({ onNavigateToCanvas }: LandingPageProps) {
                 <span><strong className="text-white">Batch processing</strong> - Optimize entire icon sets</span>
               </li>
             </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* CLI + API Section */}
+      <section className="max-w-7xl mx-auto px-6 py-20">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-full mb-6">
+            <Terminal size={16} className="text-cyan-400" />
+            <span className="text-sm text-cyan-300">For Developers & Teams</span>
+          </div>
+          <h3 className="text-3xl md:text-4xl font-bold mb-4">
+            CLI + API Integration
+          </h3>
+          <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
+            Integrate VectorCraft into your workflow, CI/CD pipelines, and SaaS products
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 mb-12">
+          {/* CLI */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center">
+                <Terminal size={24} className="text-cyan-400" />
+              </div>
+              <div>
+                <h4 className="text-2xl font-bold">CLI Tool</h4>
+                <p className="text-sm text-zinc-500">Command-line interface</p>
+              </div>
+            </div>
+
+            <div className="bg-black/50 rounded-lg p-4 mb-4 font-mono text-sm overflow-x-auto">
+              <div className="text-cyan-400"># Install globally</div>
+              <div className="text-zinc-300">npm install -g @vectorcraft/cli</div>
+              <div className="mt-3 text-cyan-400"># Convert image to SVG</div>
+              <div className="text-zinc-300">svgify logo.png --mode logo-clean</div>
+            </div>
+
+            <ul className="space-y-2 text-sm text-zinc-400">
+              <li className="flex items-start gap-2">
+                <span className="text-cyan-400 mt-1">→</span>
+                <span>Script bulk conversions in your build process</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-cyan-400 mt-1">→</span>
+                <span>Automate asset pipelines with npm scripts</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-cyan-400 mt-1">→</span>
+                <span>Integrate into CI/CD workflows (GitHub Actions, etc.)</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* API */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center">
+                <Rocket size={24} className="text-indigo-400" />
+              </div>
+              <div>
+                <h4 className="text-2xl font-bold">REST API</h4>
+                <p className="text-sm text-zinc-500">Programmatic access</p>
+              </div>
+            </div>
+
+            <div className="bg-black/50 rounded-lg p-4 mb-4 font-mono text-sm overflow-x-auto">
+              <div className="text-indigo-400">POST /api/convert</div>
+              <div className="text-zinc-500 mt-2">{'{'}</div>
+              <div className="text-zinc-300 ml-4">"image": "base64...",</div>
+              <div className="text-zinc-300 ml-4">"mode": "logo-clean"</div>
+              <div className="text-zinc-500">{'}'}</div>
+            </div>
+
+            <ul className="space-y-2 text-sm text-zinc-400">
+              <li className="flex items-start gap-2">
+                <span className="text-indigo-400 mt-1">→</span>
+                <span>Embed SVG conversion in your SaaS platform</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-indigo-400 mt-1">→</span>
+                <span>Power user-facing features silently</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-indigo-400 mt-1">→</span>
+                <span>Process images at scale with rate-limited API</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Use Cases */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-xl p-6 text-center">
+            <div className="text-3xl mb-3">🏢</div>
+            <h5 className="font-bold mb-2">SaaS Integration</h5>
+            <p className="text-sm text-zinc-500">Integrate silent SVG conversion into your app</p>
+          </div>
+          <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-xl p-6 text-center">
+            <div className="text-3xl mb-3">🏭</div>
+            <h5 className="font-bold mb-2">Agency Workflows</h5>
+            <p className="text-sm text-zinc-500">Script bulk jobs for client assets</p>
+          </div>
+          <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-xl p-6 text-center">
+            <div className="text-3xl mb-3">⚙️</div>
+            <h5 className="font-bold mb-2">Build Pipelines</h5>
+            <p className="text-sm text-zinc-500">Bake into your CI/CD and asset builds</p>
           </div>
         </div>
       </section>
