@@ -8,7 +8,7 @@ export const generateTextureImage = async (
   resolution: '1K' | '2K' = '1K'
 ): Promise<string> => {
   // Always initialize with the latest key from process.env
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
 
   // Force Pro model if resolution is 2K, otherwise use selected quality
   const modelName = (quality === ModelQuality.HIGH || resolution === '2K')
