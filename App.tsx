@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import AiPromptModal from './components/AiPromptModal';
 import VectorizationModal from './components/VectorizationModal';
 import CodeExportModal from './components/CodeExportModal';
+import UrlImportModal from './components/UrlImportModal';
 import LandingPage from './components/LandingPage';
 import { Tool, PathData, Point, ShapeType } from './types';
 import { 
@@ -88,6 +89,9 @@ function App() {
 
   // Code Export State
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
+
+  // URL Import State
+  const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
 
   // Drag & Drop State
   const [isDragging, setIsDragging] = useState(false);
@@ -989,15 +993,36 @@ function App() {
     try {
       const currentSvg = getFullSvgString();
       const newSvgContent = await processSvgWithAi(currentSvg, prompt);
-      
+
       saveStateToUndo();
       handleImportedSvg(newSvgContent);
-      
+
     } catch (error) {
       alert("Failed to process with AI. Please check your API Key or try again.");
     } finally {
       setIsAiProcessing(false);
     }
+  };
+
+  const handleUrlImport = (screenshotData: string, metadata: any) => {
+    // Create an image element from the base64 screenshot
+    const img = new Image();
+    img.onload = () => {
+      // Convert to SVG background image
+      const svgBackground = `<image href="data:image/png;base64,${screenshotData}" x="0" y="0" width="${metadata.width}" height="${metadata.height}" />`;
+
+      saveStateToUndo();
+      setBackgroundSvg(svgBackground);
+
+      // Adjust viewBox to fit the screenshot
+      setViewBox({
+        x: 0,
+        y: 0,
+        w: metadata.width,
+        h: metadata.height
+      });
+    };
+    img.src = `data:image/png;base64,${screenshotData}`;
   };
 
   // Eraser visual size
@@ -1059,10 +1084,11 @@ function App() {
          </div>
       )}
 
-      <TopBar 
+      <TopBar
         onUndo={handleUndo}
         onRedo={handleRedo}
         onClear={handleClear}
+        onUrlImport={() => setIsUrlModalOpen(true)}
         canUndo={undoStack.length > 0}
         canRedo={redoStack.length > 0}
       />
@@ -1113,10 +1139,16 @@ function App() {
         fileName={pendingFile?.name || 'Image'}
       />
 
-      <CodeExportModal 
+      <CodeExportModal
         isOpen={isCodeModalOpen}
         onClose={() => setIsCodeModalOpen(false)}
         svgContent={getFullSvgString()}
+      />
+
+      <UrlImportModal
+        isOpen={isUrlModalOpen}
+        onClose={() => setIsUrlModalOpen(false)}
+        onImport={handleUrlImport}
       />
 
       {/* Context Menu */}

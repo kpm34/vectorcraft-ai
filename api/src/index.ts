@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { captureScreenshot, ScreenshotOptions } from './screenshot.js';
 
 dotenv.config();
 
@@ -148,6 +149,57 @@ app.post('/api/convert', rateLimit, async (req: Request, res: Response) => {
     console.error('Conversion error:', error);
     res.status(500).json({
       error: 'Conversion Failed',
+      message: (error as Error).message
+    });
+  }
+});
+
+app.post('/api/screenshot', rateLimit, async (req: Request, res: Response) => {
+  try {
+    const {
+      url,
+      width = 1440,
+      height = 900,
+      fullPage = true,
+      waitUntil = 'networkidle',
+      timeout = 30000,
+      selector
+    }: ScreenshotOptions & { url: string } = req.body;
+
+    // Validate URL
+    if (!url) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Missing required field: url'
+      });
+    }
+
+    // Basic URL validation
+    try {
+      new URL(url);
+    } catch {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Invalid URL format'
+      });
+    }
+
+    // Capture screenshot
+    const result = await captureScreenshot({
+      url,
+      width,
+      height,
+      fullPage,
+      waitUntil,
+      timeout,
+      selector
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Screenshot error:', error);
+    res.status(500).json({
+      error: 'Screenshot Failed',
       message: (error as Error).message
     });
   }

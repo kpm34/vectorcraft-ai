@@ -85,6 +85,71 @@ function LandingPage({ onNavigateToCanvas }: LandingPageProps) {
         </div>
       </section>
 
+      {/* HTML to Design Feature */}
+      <section className="max-w-7xl mx-auto px-6 py-20">
+        <div className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-500/20 rounded-3xl p-12 md:p-16">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500/10 border border-pink-500/20 rounded-full mb-6">
+              <Wand2 size={16} className="text-pink-400" />
+              <span className="text-sm text-pink-300">New: HTML to Design</span>
+            </div>
+            <h3 className="text-4xl md:text-5xl font-bold mb-6">
+              Import Any Website as SVG
+            </h3>
+            <p className="text-xl text-zinc-300 max-w-3xl mx-auto mb-8">
+              Capture any URL as a reference layer, then trace over it or extract assets as vectors.
+              Perfect for recreating designs, extracting logos, and building design systems from live sites.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-black/30 rounded-xl p-6 border border-zinc-800">
+              <h4 className="text-lg font-bold mb-4 text-white">How it works:</h4>
+              <ol className="space-y-3 text-zinc-400">
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-pink-500/20 text-pink-400 rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                  <span>Enter any website URL</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-pink-500/20 text-pink-400 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                  <span>We capture a full-page screenshot</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-pink-500/20 text-pink-400 rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                  <span>Screenshot appears as locked background layer</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-pink-500/20 text-pink-400 rounded-full flex items-center justify-center text-sm font-bold">4</span>
+                  <span>Draw over it or crop sections to vectorize</span>
+                </li>
+              </ol>
+            </div>
+
+            <div className="bg-black/30 rounded-xl p-6 border border-zinc-800">
+              <h4 className="text-lg font-bold mb-4 text-white">Use cases:</h4>
+              <ul className="space-y-3 text-zinc-400">
+                <li className="flex items-start gap-2">
+                  <span className="text-pink-400 mt-1">✓</span>
+                  <span><strong className="text-white">Extract logos</strong> from any website for client work</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-pink-400 mt-1">✓</span>
+                  <span><strong className="text-white">Recreate UI elements</strong> as clean SVG components</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-pink-400 mt-1">✓</span>
+                  <span><strong className="text-white">Build design systems</strong> from existing sites</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-pink-400 mt-1">✓</span>
+                  <span><strong className="text-white">Reference designs</strong> while creating new assets</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Icon System Toolkit */}
       <section className="max-w-7xl mx-auto px-6 py-20">
         <div className="text-center mb-16">
