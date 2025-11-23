@@ -1,0 +1,5 @@
+{
+  "name": "MatCap & PBR GenAI",
+  "description": "A professional tool to generate MatCap (Material Capture) spheres and seamless PBR textures using Gemini 3 Pro Image generation. Includes real-time 3D preview and map extraction.",
+  "requestFramePermissions": []
+}

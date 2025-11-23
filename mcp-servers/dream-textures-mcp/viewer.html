@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dream Textures MCP - Local Preview Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #18181b;
+            color: #fafaf9;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            color: #fafaf9;
+        }
+
+        .subtitle {
+            color: #a8a29e;
+            font-size: 14px;
+        }
+
+        .controls {
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e7e5e4;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 12px;
+            background: #18181b;
+            border: 1px solid #3f3f46;
+            border-radius: 8px;
+            color: #fafaf9;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #a8a29e;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #3f3f46;
+            color: #fafaf9;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #52525b;
+        }
+
+        button.primary {
+            background: #e7e5e4;
+            color: #18181b;
+        }
+
+        button.primary:hover {
+            background: #fafaf9;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .preview-card {
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            border-radius: 12px;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        .preview-card h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #e7e5e4;
+        }
+
+        .preview-image {
+            width: 100%;
+            aspect-ratio: 1;
+            background: #18181b;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #a8a29e;
+            font-size: 14px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .preview-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .preview-image.empty {
+            border: 2px dashed #3f3f46;
+        }
+
+        .spinner {
+            border: 3px solid #3f3f46;
+            border-top: 3px solid #fafaf9;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status {
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #3f3f46;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            color: #a8a29e;
+            font-size: 14px;
+        }
+
+        .status-value {
+            color: #fafaf9;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-value.healthy {
+            color: #4ade80;
+        }
+
+        .status-value.offline {
+            color: #f87171;
+        }
+
+        .3d-preview {
+            width: 100%;
+            height: 400px;
+            background: #18181b;
+            border-radius: 8px;
+            border: 1px solid #3f3f46;
+        }
+
+        .map-selector {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .map-selector label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #18181b;
+            border: 1px solid #3f3f46;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .map-selector input[type="checkbox"] {
+            width: auto;
+        }
+
+        .map-selector label:has(input:checked) {
+            background: #3f3f46;
+            border-color: #a8a29e;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #3f3f46;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #fafaf9;
+            transition: width 0.3s;
+        }
+
+        .error {
+            background: #7f1d1d;
+            border: 1px solid #dc2626;
+            color: #fef2f2;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+
+        .success {
+            background: #14532d;
+            border: 1px solid #16a34a;
+            color: #f0fdf4;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Dream Textures MCP - Local Preview Viewer</h1>
+            <p class="subtitle">Generate and preview PBR textures with Blender Dream Textures</p>
+        </header>
+
+        <div class="status">
+            <div class="status-item">
+                <span class="status-label">Blender Bridge Status</span>
+                <span class="status-value" id="blender-status">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Blender Version</span>
+                <span class="status-value" id="blender-version">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Dream Textures</span>
+                <span class="status-value" id="dream-textures-status">-</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <h2 style="margin-bottom: 16px; font-size: 20px;">Generate PBR Textures</h2>
+
+            <div class="form-group">
+                <label for="prompt">Material Prompt</label>
+                <input type="text" id="prompt" placeholder="e.g., brushed steel with scratches, rusty metal, polished chrome">
+            </div>
+
+            <div class="form-group">
+                <label for="resolution">Resolution</label>
+                <select id="resolution">
+                    <option value="512">512 x 512 (Fast)</option>
+                    <option value="1024" selected>1024 x 1024 (Balanced)</option>
+                    <option value="2048">2048 x 2048 (High Quality)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="steps">Diffusion Steps (Higher = Better Quality)</label>
+                <select id="steps">
+                    <option value="10">10 (Fast Preview)</option>
+                    <option value="20" selected>20 (Balanced)</option>
+                    <option value="30">30 (High Quality)</option>
+                    <option value="40">40 (Production)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>PBR Maps to Generate</label>
+                <div class="map-selector">
+                    <label><input type="checkbox" name="map" value="albedo" checked> Albedo</label>
+                    <label><input type="checkbox" name="map" value="normal" checked> Normal</label>
+                    <label><input type="checkbox" name="map" value="roughness" checked> Roughness</label>
+                    <label><input type="checkbox" name="map" value="metallic" checked> Metallic</label>
+                    <label><input type="checkbox" name="map" value="ao"> AO</label>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="primary" id="generate-btn" onclick="generateTextures()">Generate Textures</button>
+                <button onclick="clearPreviews()">Clear Previews</button>
+                <button onclick="downloadAll()">Download All</button>
+            </div>
+
+            <div id="progress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+
+            <div id="message"></div>
+        </div>
+
+        <div class="preview-grid" id="preview-grid">
+            <div class="preview-card">
+                <h3>Albedo (Base Color)</h3>
+                <div class="preview-image empty" id="preview-albedo">
+                    <span>No texture generated</span>
+                </div>
+            </div>
+
+            <div class="preview-card">
+                <h3>Normal Map</h3>
+                <div class="preview-image empty" id="preview-normal">
+                    <span>No texture generated</span>
+                </div>
+            </div>
+
+            <div class="preview-card">
+                <h3>Roughness Map</h3>
+                <div class="preview-image empty" id="preview-roughness">
+                    <span>No texture generated</span>
+                </div>
+            </div>
+
+            <div class="preview-card">
+                <h3>Metallic Map</h3>
+                <div class="preview-image empty" id="preview-metallic">
+                    <span>No texture generated</span>
+                </div>
+            </div>
+
+            <div class="preview-card">
+                <h3>Ambient Occlusion</h3>
+                <div class="preview-image empty" id="preview-ao">
+                    <span>No texture generated</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5555';
+        let generatedTextures = {};
+
+        // Check Blender bridge status on load
+        async function checkBlenderStatus() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+
+                if (data.status === 'healthy') {
+                    document.getElementById('blender-status').textContent = 'Connected';
+                    document.getElementById('blender-status').className = 'status-value healthy';
+                    document.getElementById('blender-version').textContent = data.blender_version;
+                    document.getElementById('dream-textures-status').textContent =
+                        data.dream_textures_enabled ? 'Enabled' : 'Disabled';
+                } else {
+                    throw new Error('Unhealthy');
+                }
+            } catch (error) {
+                document.getElementById('blender-status').textContent = 'Offline';
+                document.getElementById('blender-status').className = 'status-value offline';
+                document.getElementById('blender-version').textContent = 'N/A';
+                document.getElementById('dream-textures-status').textContent = 'N/A';
+            }
+        }
+
+        async function generateTextures() {
+            const prompt = document.getElementById('prompt').value.trim();
+            if (!prompt) {
+                showMessage('Please enter a material prompt', 'error');
+                return;
+            }
+
+            const resolution = parseInt(document.getElementById('resolution').value);
+            const steps = parseInt(document.getElementById('steps').value);
+            const maps = Array.from(document.querySelectorAll('input[name="map"]:checked'))
+                .map(cb => cb.value);
+
+            if (maps.length === 0) {
+                showMessage('Please select at least one PBR map to generate', 'error');
+                return;
+            }
+
+            const generateBtn = document.getElementById('generate-btn');
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Generating...';
+
+            showProgress(true);
+            clearMessage();
+
+            try {
+                // Clear old previews for selected maps
+                maps.forEach(map => {
+                    const preview = document.getElementById(`preview-${map}`);
+                    preview.innerHTML = '<div class="spinner"></div>';
+                    preview.classList.remove('empty');
+                });
+
+                const response = await fetch(`${API_URL}/generate-pbr-set`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt,
+                        resolution,
+                        steps,
+                        maps
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    generatedTextures = data.maps;
+
+                    // Display generated textures
+                    Object.keys(data.maps).forEach(mapType => {
+                        if (data.maps[mapType]) {
+                            const preview = document.getElementById(`preview-${mapType}`);
+                            const img = document.createElement('img');
+                            img.src = `data:image/png;base64,${data.maps[mapType]}`;
+                            img.alt = `${mapType} map`;
+                            preview.innerHTML = '';
+                            preview.appendChild(img);
+                        }
+                    });
+
+                    showMessage(`Successfully generated ${Object.keys(data.maps).length} PBR maps!`, 'success');
+                } else {
+                    throw new Error(data.error || 'Generation failed');
+                }
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+                console.error('Generation error:', error);
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Textures';
+                showProgress(false);
+            }
+        }
+
+        function clearPreviews() {
+            generatedTextures = {};
+            ['albedo', 'normal', 'roughness', 'metallic', 'ao'].forEach(mapType => {
+                const preview = document.getElementById(`preview-${mapType}`);
+                preview.innerHTML = '<span>No texture generated</span>';
+                preview.classList.add('empty');
+            });
+            clearMessage();
+        }
+
+        function downloadAll() {
+            if (Object.keys(generatedTextures).length === 0) {
+                showMessage('No textures to download. Generate textures first.', 'error');
+                return;
+            }
+
+            const prompt = document.getElementById('prompt').value.trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '_')
+                .substring(0, 30);
+
+            Object.keys(generatedTextures).forEach(mapType => {
+                if (generatedTextures[mapType]) {
+                    const link = document.createElement('a');
+                    link.href = `data:image/png;base64,${generatedTextures[mapType]}`;
+                    link.download = `${prompt}_${mapType}.png`;
+                    link.click();
+                }
+            });
+
+            showMessage('Downloading all textures...', 'success');
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = type;
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+        }
+
+        function clearMessage() {
+            const messageDiv = document.getElementById('message');
+            messageDiv.style.display = 'none';
+        }
+
+        function showProgress(show) {
+            const progressDiv = document.getElementById('progress');
+            progressDiv.style.display = show ? 'block' : 'none';
+
+            if (show) {
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 1;
+                    document.getElementById('progress-fill').style.width = `${Math.min(progress, 95)}%`;
+                    if (progress >= 95) clearInterval(interval);
+                }, 300);
+            } else {
+                document.getElementById('progress-fill').style.width = '100%';
+                setTimeout(() => {
+                    document.getElementById('progress-fill').style.width = '0%';
+                }, 300);
+            }
+        }
+
+        // Check status on load
+        checkBlenderStatus();
+
+        // Re-check every 5 seconds
+        setInterval(checkBlenderStatus, 5000);
+    </script>
+</body>
+</html>
