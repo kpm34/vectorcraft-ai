@@ -12,6 +12,7 @@
     "@google/genai": "^1.30.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.0",
+    "imagetracerjs": "^1.2.6",
     "lucide-react": "^0.554.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

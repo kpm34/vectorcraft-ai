@@ -14,6 +14,7 @@ export default function App() {
   const [mode, setMode] = useState<TextureMode>(TextureMode.MATCAP);
   const [quality, setQuality] = useState<ModelQuality>(ModelQuality.HIGH);
   const [geometryType, setGeometryType] = useState<'sphere' | 'box' | 'torus' | 'plane'>('sphere');
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUpscaling, setIsUpscaling] = useState(false);
@@ -64,8 +65,8 @@ export default function App() {
     try {
       // Default to 1K for initial generation to be snappy, unless user really wants high quality start
       // But keeping consistent with user choice.
-      const resolution = '1K'; 
-      const albedo = await generateTextureImage(prompt, mode, quality, resolution);
+      const resolution = '1K';
+      const albedo = await generateTextureImage(prompt, mode, quality, resolution, referenceImage);
       const { normal, roughness } = await processMaps(albedo, mode, resolution);
 
       setCurrentTexture({
@@ -159,7 +160,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen bg-black text-white font-sans overflow-hidden">
-      <ControlPanel 
+      <ControlPanel
         isGenerating={isGenerating}
         isUpscaling={isUpscaling}
         onGenerate={handleGenerate}
@@ -174,6 +175,8 @@ export default function App() {
         setMode={setMode}
         quality={quality}
         setQuality={setQuality}
+        referenceImage={referenceImage}
+        setReferenceImage={setReferenceImage}
       />
 
       <div className="flex-1 relative h-full">
@@ -186,17 +189,6 @@ export default function App() {
           geometryType={geometryType}
         />
 
-        {!currentTexture && !isGenerating && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-neutral-900/80 backdrop-blur-md border border-neutral-800 p-8 rounded-2xl text-center max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-500">
-              <Sparkles className="w-10 h-10 text-purple-500 mx-auto mb-4 opacity-80" />
-              <h2 className="text-2xl font-bold text-white mb-2">Ready to Imagine</h2>
-              <p className="text-neutral-400">
-                Enter a prompt in the sidebar to generate custom PBR textures or MatCaps.
-              </p>
-            </div>
-          </div>
-        )}
 
         {error && (
            <div className="absolute bottom-6 left-6 right-6 mx-auto max-w-lg bg-red-900/90 backdrop-blur-sm border border-red-700 text-white p-4 rounded-xl shadow-2xl flex items-center justify-between animate-in slide-in-from-bottom-5 z-50">

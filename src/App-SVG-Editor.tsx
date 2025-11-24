@@ -25,11 +25,13 @@ import {
   scalePoint
 } from '../utils/geometry';
 import { processSvgWithAi, bitmapToSvg, VectorizeConfig } from '../lib/services/gemini';
+import { traceBitmap } from '../lib/services/tracer';
 import { Upload, Copy, Trash2, RotateCw, FlipHorizontal } from 'lucide-react';
 
 function App() {
   // View State
-  const [showLanding, setShowLanding] = useState<boolean>(true);
+  // Internal landing page removed in favor of main app routing
+  // const [showLanding, setShowLanding] = useState<boolean>(true);
 
   const [tool, setTool] = useState<Tool>(Tool.SELECT);
   const [shapeType, setShapeType] = useState<ShapeType>('rectangle');
@@ -77,6 +79,7 @@ function App() {
 
   // Cursor State for Eraser
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const lastEraserPosRef = useRef<Point | null>(null);
   
   // AI State
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -398,7 +401,9 @@ function App() {
         saveStateToUndo();
         setIsDrawing(true); // Reuse isDrawing flag for erasing state
         const radius = eraserSize / 2;
+        // Initial erase at click point
         setPaths(prev => prev.flatMap(p => eraseFromPath(p, point, radius)));
+        lastEraserPosRef.current = point;
         return;
       }
 
@@ -647,9 +652,37 @@ function App() {
     } else if (isDrawing) {
       
       if (tool === Tool.ERASER) {
-         // Real Erasing Logic
+         // Real Erasing Logic with Interpolation
          const radius = eraserSize / 2;
-         setPaths(prev => prev.flatMap(p => eraseFromPath(p, point, radius)));
+         const p1 = lastEraserPosRef.current || point;
+         const p2 = point;
+         const dist = Math.sqrt((p2.x-p1.x)**2 + (p2.y-p1.y)**2);
+         const step = radius / 2; // Step size relative to eraser radius for smooth coverage
+         
+         if (dist > step) {
+            const steps = Math.ceil(dist / step);
+            const pointsToErase: Point[] = [];
+            for(let i=1; i<=steps; i++) {
+               const t = i / steps;
+               pointsToErase.push({
+                  x: p1.x + (p2.x - p1.x) * t,
+                  y: p1.y + (p2.y - p1.y) * t
+               });
+            }
+            
+            // Apply erase for all interpolated points in one batch update
+            setPaths(prev => {
+               let currentPaths = prev;
+               pointsToErase.forEach(ep => {
+                   currentPaths = currentPaths.flatMap(p => eraseFromPath(p, ep, radius));
+               });
+               return currentPaths;
+            });
+         } else {
+            setPaths(prev => prev.flatMap(p => eraseFromPath(p, point, radius)));
+         }
+         
+         lastEraserPosRef.current = point;
          return;
       }
 
@@ -725,6 +758,7 @@ function App() {
 
     } else if (isDrawing) {
       setIsDrawing(false);
+      lastEraserPosRef.current = null;
       
       // If we were drawing a new path (not erasing), commit it
       if (tool !== Tool.ERASER && tool !== Tool.FILL && currentPoints.length > 1) {
@@ -913,7 +947,12 @@ function App() {
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (file) {
+        // Bypass modal for PNG/JPG and go straight to vectorization if desired, 
+        // OR just set default config to skip the modal step.
+        // For now, just opening modal as per existing logic but can be streamlined.
+        processFile(file);
+    }
   };
 
   // --- Drag & Drop Handlers ---
@@ -940,7 +979,46 @@ function App() {
     
     const file = e.dataTransfer.files?.[0];
     if (file) {
-      processFile(file);
+      // Direct processing bypass
+      if (file.type.startsWith('image/') && !file.type.includes('svg')) {
+         setPendingFile(file);
+         // Simulate confirm immediately with defaults
+         const defaultConfig: VectorizeConfig = {
+            mode: 'illustration', 
+            complexity: 'medium',
+            maxColors: 16
+         };
+         
+         const reader = new FileReader();
+         reader.onload = async (ev) => {
+            const base64Data = (ev.target?.result as string).split(',')[1];
+            setLoadingText('Tracing Geometry...');
+            setIsAiProcessing(true);
+            
+            try {
+               // Use local algorithmic tracer instead of AI
+               // This provides deterministic geometry detection and lines
+               const svgContent = await traceBitmap(base64Data, {
+                 numberofcolors: 16,
+                 pathomit: 2, // Keep small details
+                 ltres: 0.5,  // High precision
+                 qtres: 0.5   // High precision
+               });
+               
+               saveStateToUndo();
+               handleImportedSvg(svgContent);
+            } catch (error) {
+               console.error(error);
+               alert("Failed to trace image.");
+            } finally {
+               setIsAiProcessing(false);
+               setPendingFile(null);
+            }
+         };
+         reader.readAsDataURL(file);
+      } else {
+         processFile(file);
+      }
     }
   };
 
@@ -976,11 +1054,25 @@ function App() {
   };
 
   const handleSmoothAll = () => {
+    if (paths.length === 0) return;
+    
     saveStateToUndo();
-    setPaths(prev => prev.map(p => ({
-      ...p,
-      smoothing: smoothingLevel > 0 ? smoothingLevel : 1
-    })));
+    
+    // Apply smoothing to all non-text paths
+    const targetSmoothing = smoothingLevel > 0 ? smoothingLevel : 1;
+    
+    setPaths(prev => prev.map(p => {
+      // Skip text paths - they don't use smoothing
+      if (p.type === 'text') return p;
+      
+      // Apply smoothing to all vector paths
+      // Paths with smoothing: 0 (geometric shapes) will get smoothed too
+      // Users can always adjust individual paths later if needed
+      return {
+        ...p,
+        smoothing: targetSmoothing
+      };
+    }));
   };
 
   // --- AI Processing ---
@@ -1059,9 +1151,9 @@ function App() {
   const rotationHandleDist = 20 / getZoomScale();
 
   // Show landing page if user hasn't entered the editor yet
-  if (showLanding) {
-    return <LandingPage onNavigateToCanvas={() => setShowLanding(false)} />;
-  }
+  // if (showLanding) {
+  //   return <LandingPage onNavigateToCanvas={() => setShowLanding(false)} />;
+  // }
 
   return (
     <div
@@ -1132,12 +1224,14 @@ function App() {
         isLoading={isAiProcessing}
       />
 
-      <VectorizationModal 
+      {/* Vectorization Modal Removed from Render Loop since we bypass it on drop */}
+      {/* Only kept for explicit uploads if needed, but for now hidden to streamline flow */}
+      {/* <VectorizationModal 
         isOpen={isVecModalOpen}
         onClose={() => { setIsVecModalOpen(false); setPendingFile(null); }}
         onConfirm={handleVectorizeConfirm}
         fileName={pendingFile?.name || 'Image'}
-      />
+      /> */}
 
       <CodeExportModal
         isOpen={isCodeModalOpen}

@@ -1,11 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 
 const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
+  // Fallback to Vite env var if process.env is not populated (client-side)
+  const apiKey = process.env.API_KEY || import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("API_KEY is missing from environment variables");
+    console.warn("API_KEY is missing. AI features may fail.");
   }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: apiKey || '' });
 };
 
 export const processSvgWithAi = async (
@@ -60,8 +61,10 @@ export const processSvgWithAi = async (
 };
 
 export interface VectorizeConfig {
+  mode?: 'logo-clean' | 'icon' | 'illustration' | 'auto';
   complexity: 'low' | 'medium' | 'high';
-  removeBackground: boolean;
+  maxColors?: number;
+  removeBackground?: boolean;
 }
 
 export const bitmapToSvg = async (
@@ -70,18 +73,34 @@ export const bitmapToSvg = async (
   config: VectorizeConfig = { complexity: 'medium', removeBackground: false }
 ): Promise<string> => {
   const ai = getAiClient();
+  const maxColors = config.maxColors || 16;
+  const mode = config.mode || 'auto';
+  
+  const basePrompt = 'Convert this image to clean, optimized SVG code.';
   
   let stylePrompt = "";
-  switch (config.complexity) {
-    case 'low':
-      stylePrompt = "Create a minimal, low-detail, icon-style SVG. Use very few colors (flat), simple geometric shapes, and thick clear strokes if needed. Avoid noise.";
+  
+  // Mode-specific prompting (Matching the Backend API logic)
+  switch (mode) {
+    case 'logo-clean':
+      stylePrompt = `${basePrompt} This is a logo - prioritize clean paths, minimal colors (max ${maxColors}), and small file size. Remove any background. Use simple geometric shapes where possible.`;
       break;
-    case 'high':
-      stylePrompt = "Create a highly detailed vector illustration. Capture fine details, use varied line weights, and a richer color palette. Try to match the original image closely.";
+    case 'icon':
+      stylePrompt = `${basePrompt} This is an icon - create simple, recognizable shapes with consistent stroke width. Normalize to a square viewBox. Use no more than ${maxColors} colors. Ensure grid alignment.`;
       break;
-    case 'medium':
+    case 'illustration':
+      stylePrompt = `${basePrompt} This is detailed artwork/sketch - preserve details, trace lines accurately, use gradients if needed, and allow up to ${maxColors} colors. Maintain visual fidelity to the original.`;
+      break;
+    case 'auto':
     default:
-      stylePrompt = "Convert this image into a clean, flat SVG vector illustration. Balance detail with simplicity.";
+      // Legacy/Fallback logic based on complexity
+      if (config.complexity === 'low') {
+         stylePrompt = "Create a minimal, low-detail, icon-style SVG. Use very few colors (flat), simple geometric shapes, and thick clear strokes if needed. Avoid noise.";
+      } else if (config.complexity === 'high') {
+         stylePrompt = "Create a highly detailed vector illustration. Capture fine details, use varied line weights, and a richer color palette. Try to match the original image closely.";
+      } else {
+         stylePrompt = "Convert this image into a clean, flat SVG vector illustration. Balance detail with simplicity.";
+      }
       break;
   }
 

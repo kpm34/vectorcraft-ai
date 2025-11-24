@@ -1,60 +1,107 @@
 # VectorCraft AI API
 
-REST API for converting images to SVG programmatically.
+Production-ready REST API for Vector Studio and Texture Studio workflows.
 
 ## Quick Start
 
-### Installation
-
 ```bash
+# Install dependencies
 cd api
 npm install
+
+# Set environment variables
+export GEMINI_API_KEY="your-api-key-here"
+export PORT=3001  # Optional, defaults to 3001
+
+# Start server
+npm run dev
 ```
 
-### Environment Setup
+## Architecture
 
-```bash
-# .env
-GEMINI_API_KEY=your-api-key-here
-PORT=3001
+The API is organized into two main endpoint groups:
+
+- **Vector Studio** (`/api/vector/*`) - Image to SVG conversion and web screenshot tools
+- **Texture Studio** (`/api/texture/*`) - AI-powered MatCap and PBR texture generation
+
+## Base URL
+
+```
+http://localhost:3001  # Development
+https://api.vectorcraft.ai  # Production
 ```
 
-### Run
+## Authentication
 
-```bash
-npm run dev    # Development with hot reload
-npm start      # Production
+All API requests require a Gemini API key passed in the `Authorization` header:
+
+```
+Authorization: Bearer YOUR_GEMINI_API_KEY
 ```
 
-## API Endpoints
+## Rate Limiting
 
-### POST `/api/convert`
+- **Window**: 60 seconds
+- **Max Requests**: 10 requests per IP
+- **Response**: 429 Too Many Requests with `retryAfter` field
 
-Convert an image to SVG.
+---
 
-**Request:**
+## Endpoints
 
+### Health & Status
+
+#### `GET /health`
+
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "uptime": 12345.67
+}
+```
+
+#### `GET /api/status`
+
+API status and available endpoints.
+
+**Response:**
+```json
+{
+  "status": "operational",
+  "version": "1.0.0",
+  "endpoints": {
+    "vector": {
+      "convert": "/api/vector/convert",
+      "screenshot": "/api/vector/screenshot"
+    },
+    "texture": {
+      "generate": "/api/texture/generate"
+    },
+    "health": "/health"
+  }
+}
+```
+
+---
+
+## Vector Studio Endpoints
+
+### `POST /api/vector/convert`
+
+Convert raster images (PNG, JPG, JPEG) to optimized SVG.
+
+**Request Body:**
 ```json
 {
   "image": "base64_encoded_image_data",
   "mimeType": "image/png",
   "mode": "logo-clean",
   "complexity": "low",
-  "quality": "high",
+  "quality": "medium",
   "maxColors": 8
-}
-```
-
-**Response:**
-
-```json
-{
-  "svg": "<svg>...</svg>",
-  "metadata": {
-    "mode": "logo-clean",
-    "colors": 8,
-    "fileSize": 2048
-  }
 }
 ```
 
@@ -63,201 +110,195 @@ Convert an image to SVG.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `image` | string | Yes | Base64-encoded image data |
-| `mimeType` | string | Yes | Image MIME type (e.g., `image/png`) |
-| `mode` | string | No | Conversion mode: `logo-clean`, `icon`, `illustration`, `auto` (default: `auto`) |
-| `complexity` | string | No | Complexity level: `low`, `medium`, `high` (default: `medium`) |
-| `quality` | string | No | Quality: `low`, `medium`, `high` (default: `medium`) |
-| `maxColors` | number | No | Maximum colors (default: 8) |
+| `mimeType` | string | Yes | MIME type (image/png, image/jpeg, image/webp) |
+| `mode` | string | No | Conversion mode (see below) |
+| `complexity` | string | No | `low`, `medium`, `high` |
+| `quality` | string | No | `low`, `medium`, `high` |
+| `maxColors` | number | No | Maximum colors (1-32, default: 8) |
 
-### GET `/health`
+**Modes:**
 
-Health check endpoint.
-
-**Response:**
-
-```json
-{
-  "status": "ok",
-  "uptime": 12345.67
-}
-```
-
-### GET `/api/status`
-
-API status and available endpoints.
+- `logo-clean` - Minimal colors, clean paths, small file size
+- `icon` - Simple shapes, consistent stroke width, grid-aligned
+- `illustration` - Detailed artwork, gradients, high fidelity
+- `auto` - Automatically detect best mode
 
 **Response:**
-
 ```json
 {
-  "status": "operational",
-  "version": "1.0.0",
-  "endpoints": {
-    "convert": "/api/convert",
-    "health": "/health"
+  "svg": "<svg>...</svg>",
+  "metadata": {
+    "mode": "logo-clean",
+    "colors": 8,
+    "fileSize": 1234
   }
 }
 ```
 
-## Usage Examples
-
-### Node.js
-
-```javascript
-import fetch from 'node-fetch';
-import { readFileSync } from 'fs';
-
-const imageBuffer = readFileSync('logo.png');
-const base64Data = imageBuffer.toString('base64');
-
-const response = await fetch('http://localhost:3001/api/convert', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    image: base64Data,
-    mimeType: 'image/png',
-    mode: 'logo-clean',
-    complexity: 'low',
-    quality: 'high',
-    maxColors: 6
-  })
-});
-
-const { svg, metadata } = await response.json();
-console.log('SVG generated:', svg.length, 'bytes');
-```
-
-### Python
-
-```python
-import base64
-import requests
-
-# Read and encode image
-with open('logo.png', 'rb') as f:
-    image_data = base64.b64encode(f.read()).decode('utf-8')
-
-# Convert to SVG
-response = requests.post('http://localhost:3001/api/convert', json={
-    'image': image_data,
-    'mimeType': 'image/png',
-    'mode': 'logo-clean',
-    'complexity': 'low',
-    'maxColors': 8
-})
-
-result = response.json()
-svg = result['svg']
-
-# Save SVG
-with open('logo.svg', 'w') as f:
-    f.write(svg)
-```
-
-### cURL
-
+**Example:**
 ```bash
-# Convert image to base64 and POST
-IMAGE_B64=$(base64 -i logo.png)
-
-curl -X POST http://localhost:3001/api/convert \
+curl -X POST http://localhost:3001/api/vector/convert \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
-    "image": "'"$IMAGE_B64"'",
+    "image": "iVBORw0KGgoAAAA...",
     "mimeType": "image/png",
     "mode": "logo-clean",
-    "complexity": "low",
-    "maxColors": 8
-  }' | jq -r '.svg' > logo.svg
+    "maxColors": 4
+  }'
 ```
 
-### TypeScript SDK
+---
 
-```typescript
-class VectorCraftClient {
-  constructor(
-    private apiUrl = 'http://localhost:3001',
-    private apiKey?: string
-  ) {}
+### `POST /api/vector/screenshot`
 
-  async convert(
-    imagePath: string,
-    options: {
-      mode?: 'logo-clean' | 'icon' | 'illustration' | 'auto';
-      complexity?: 'low' | 'medium' | 'high';
-      quality?: 'low' | 'medium' | 'high';
-      maxColors?: number;
-    } = {}
-  ): Promise<string> {
-    const fs = await import('fs');
-    const path = await import('path');
+Capture webpage screenshots for conversion to design layers.
 
-    const imageBuffer = fs.readFileSync(imagePath);
-    const base64Data = imageBuffer.toString('base64');
-    const ext = path.extname(imagePath).toLowerCase();
-    const mimeType = this.getMimeType(ext);
+**Request Body:**
+```json
+{
+  "url": "https://example.com",
+  "width": 1440,
+  "height": 900,
+  "fullPage": true,
+  "waitUntil": "networkidle",
+  "timeout": 30000,
+  "selector": "#main-content"
+}
+```
 
-    const response = await fetch(`${this.apiUrl}/api/convert`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` })
-      },
-      body: JSON.stringify({
-        image: base64Data,
-        mimeType,
-        ...options
-      })
-    });
+**Parameters:**
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`API Error: ${error.message}`);
-    }
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | string | Yes | URL to capture |
+| `width` | number | No | Viewport width (default: 1440) |
+| `height` | number | No | Viewport height (default: 900) |
+| `fullPage` | boolean | No | Capture full scrollable page (default: true) |
+| `waitUntil` | string | No | `load`, `domcontentloaded`, `networkidle` |
+| `timeout` | number | No | Max wait time in ms (default: 30000) |
+| `selector` | string | No | CSS selector to capture specific element |
 
-    const { svg } = await response.json();
-    return svg;
-  }
-
-  private getMimeType(ext: string): string {
-    const types: Record<string, string> = {
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.webp': 'image/webp'
-    };
-    return types[ext] || 'application/octet-stream';
+**Response:**
+```json
+{
+  "image": "data:image/png;base64,...",
+  "metadata": {
+    "width": 1440,
+    "height": 2400,
+    "url": "https://example.com"
   }
 }
-
-// Usage
-const client = new VectorCraftClient();
-const svg = await client.convert('logo.png', {
-  mode: 'logo-clean',
-  maxColors: 6
-});
 ```
 
-## Rate Limiting
+---
 
-- **Limit:** 10 requests per minute per IP
-- **Response:** `429 Too Many Requests` with `retryAfter` header
+## Texture Studio Endpoints
+
+### `POST /api/texture/generate`
+
+Generate AI-powered MatCap or PBR texture sets.
+
+**Request Body:**
+```json
+{
+  "prompt": "brushed steel with blue tint",
+  "mode": "MATCAP",
+  "quality": "FAST",
+  "resolution": "1K"
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | Material description |
+| `mode` | string | Yes | `MATCAP` or `PBR` |
+| `quality` | string | No | `FAST` or `HIGH` (default: FAST) |
+| `resolution` | string | No | `1K` or `2K` (default: 1K) |
+
+**Modes:**
+
+- **MATCAP** (Material Capture)
+  - Single sphere on black background
+  - Baked lighting and reflections
+  - Fast rendering in 3D applications
+  - Returns: albedo only
+
+- **PBR** (Physically Based Rendering)
+  - Seamless, tileable texture patterns
+  - Separate material channels
+  - Industry-standard workflow
+  - Returns: albedo, normal, roughness
+
+**Response (MATCAP):**
+```json
+{
+  "albedo": "data:image/png;base64,...",
+  "metadata": {
+    "mode": "MATCAP",
+    "resolution": "1K",
+    "timestamp": 1234567890
+  }
+}
+```
+
+**Response (PBR):**
+```json
+{
+  "albedo": "data:image/png;base64,...",
+  "normal": "data:image/png;base64,...",
+  "roughness": "data:image/png;base64,...",
+  "metadata": {
+    "mode": "PBR",
+    "resolution": "1K",
+    "timestamp": 1234567890
+  }
+}
+```
+
+**Example (MatCap):**
+```bash
+curl -X POST http://localhost:3001/api/texture/generate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "prompt": "polished chrome with rainbow reflections",
+    "mode": "MATCAP",
+    "quality": "HIGH",
+    "resolution": "2K"
+  }'
+```
+
+**Example (PBR):**
+```bash
+curl -X POST http://localhost:3001/api/texture/generate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "prompt": "weathered brick wall with moss",
+    "mode": "PBR",
+    "quality": "FAST",
+    "resolution": "1K"
+  }'
+```
+
+---
 
 ## Error Responses
 
-### 400 Bad Request
+All endpoints return standard error responses:
 
+**400 Bad Request:**
 ```json
 {
   "error": "Bad Request",
-  "message": "Missing required fields: image, mimeType"
+  "message": "Missing required field: prompt"
 }
 ```
 
-### 429 Too Many Requests
-
+**429 Too Many Requests:**
 ```json
 {
   "error": "Too many requests",
@@ -266,8 +307,7 @@ const svg = await client.convert('logo.png', {
 }
 ```
 
-### 500 Internal Server Error
-
+**500 Internal Server Error:**
 ```json
 {
   "error": "Conversion Failed",
@@ -275,39 +315,100 @@ const svg = await client.convert('logo.png', {
 }
 ```
 
-## Deployment
+---
+
+## Testing
+
+Run the comprehensive workflow test:
+
+```bash
+# From project root
+./test-api-workflow.sh
+```
+
+This tests:
+- ✅ Health & status checks
+- ✅ Vector Studio SVG conversion (logo & icon modes)
+- ✅ Texture Studio MatCap generation
+- ✅ Texture Studio PBR generation (albedo, normal, roughness)
+
+---
+
+## Models Used
+
+### Gemini 2.5 Flash Image (`gemini-2.5-flash-image`)
+- **Use**: Fast quality mode, 1K resolution
+- **Best for**: Rapid prototyping, batch generation
+- **Speed**: ~3-5 seconds per texture
+
+### Gemini 3 Pro Image Preview (`gemini-3-pro-image-preview`)
+- **Use**: High quality mode, 2K resolution
+- **Best for**: Production assets, high-detail work
+- **Speed**: ~10-15 seconds per texture
+- **Features**: Supports 2K image size parameter
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GEMINI_API_KEY` | Yes | Google Gemini API key |
+| `PORT` | No | Server port (default: 3001) |
+| `NODE_ENV` | No | `development` or `production` |
+
+---
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server with hot reload
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+
+# Run tests
+npm test
+```
+
+---
+
+## Production Deployment
 
 ### Vercel
 
 ```bash
-vercel deploy
+vercel --prod
 ```
 
 ### Docker
 
 ```dockerfile
-FROM node:20-alpine
-
+FROM node:18-alpine
 WORKDIR /app
-
 COPY package*.json ./
-RUN npm ci --production
-
+RUN npm ci --only=production
 COPY . .
 RUN npm run build
-
 EXPOSE 3001
-
 CMD ["npm", "start"]
 ```
 
-### Environment Variables for Production
+### Environment
 
-```bash
-GEMINI_API_KEY=your-production-key
-PORT=3001
-NODE_ENV=production
-```
+Ensure `GEMINI_API_KEY` is set in your deployment environment:
+- Vercel: Project Settings → Environment Variables
+- Docker: `-e GEMINI_API_KEY=xxx`
+- Kubernetes: ConfigMap or Secret
+
+---
 
 ## License
 

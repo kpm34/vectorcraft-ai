@@ -132,97 +132,6 @@ const getCircleSegmentIntersections = (
   return intersections.sort((a, b) => a - b);
 };
 
-// Erase parts of a path that are inside the eraser circle
-// Returns an array of new paths (can be 0 if fully erased, 1 if touched/unaffected, or >1 if split)
-export const eraseFromPath = (path: PathData, center: Point, radius: number): PathData[] => {
-  // Ignore text for now - eraser only works on vector paths
-  if (path.type === 'text') return [path];
-
-  // Optimization: Check if path is even close to the eraser
-  const bbox = getBoundingBox(path.points);
-  if (
-    center.x + radius < bbox.x ||
-    center.x - radius > bbox.x + bbox.w ||
-    center.y + radius < bbox.y ||
-    center.y - radius > bbox.y + bbox.h
-  ) {
-    return [path];
-  }
-
-  const radiusSq = radius * radius;
-  const newPaths: PathData[] = [];
-  let currentPoints: Point[] = [];
-
-  const startNewPath = () => {
-    if (currentPoints.length >= 2) {
-      newPaths.push({
-        ...path,
-        id: path.id + '-' + Math.random().toString(36).substr(2, 5),
-        points: [...currentPoints]
-      });
-    }
-    currentPoints = [];
-  };
-
-  const points = path.points;
-  if (points.length < 2) return [path];
-
-  // Start with the first point
-  let isPrevInside = (points[0].x - center.x) ** 2 + (points[0].y - center.y) ** 2 < radiusSq;
-  if (!isPrevInside) {
-    currentPoints.push(points[0]);
-  }
-
-  for (let i = 0; i < points.length - 1; i++) {
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    
-    // Skip zero length segments to avoid division by zero in intersection calc
-    if (Math.abs(p1.x - p2.x) < 0.001 && Math.abs(p1.y - p2.y) < 0.001) {
-       continue;
-    }
-
-    // Check intersection with segment
-    const intersections = getCircleSegmentIntersections(p1, p2, center, radius);
-    const isNextInside = (p2.x - center.x) ** 2 + (p2.y - center.y) ** 2 < radiusSq;
-
-    if (intersections.length === 0) {
-      if (!isPrevInside) {
-         currentPoints.push(p2);
-      }
-    } else {
-      // Intersections found
-      for (const t of intersections) {
-        const ix = p1.x + t * (p2.x - p1.x);
-        const iy = p1.y + t * (p2.y - p1.y);
-        
-        if (currentPoints.length > 0) {
-           currentPoints.push({x: ix, y: iy});
-           startNewPath(); // Cut
-        } else {
-           currentPoints.push({x: ix, y: iy});
-        }
-      }
-      
-      if (!isNextInside) {
-        currentPoints.push(p2);
-      }
-    }
-    
-    isPrevInside = isNextInside;
-  }
-  
-  // Close any remaining path
-  startNewPath();
-
-  if (newPaths.length === 1 && newPaths[0].points.length === path.points.length) {
-     return [path];
-  }
-
-  return newPaths;
-};
-
-
 // Ramer-Douglas-Peucker simplification algorithm
 const simplifyPoints = (points: Point[], tolerance: number): Point[] => {
   if (points.length <= 2) return points;
@@ -318,6 +227,149 @@ export const pointsToSmoothedPath = (points: Point[], smoothingFactor: number = 
   d += ` L ${last.x} ${last.y}`;
 
   return d;
+};
+
+export const bakePath = (path: PathData): PathData => {
+  // If already baked (smoothing 0) or text, return as is.
+  if (path.type === 'text') return path;
+  if (path.smoothing === 0) return path;
+
+  const d = pointsToSmoothedPath(path.points, path.smoothing || 0);
+  if (!d) return path;
+
+  // Setup DOM elements for measuring
+  const div = document.createElement('div');
+  div.style.cssText = 'position:absolute;visibility:hidden;width:0;height:0;pointer-events:none;';
+  document.body.appendChild(div);
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  div.appendChild(svg);
+  
+  const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  pathEl.setAttribute("d", d);
+  svg.appendChild(pathEl);
+
+  const len = pathEl.getTotalLength();
+  const points: Point[] = [];
+  
+  // Step size: balance performance vs quality. 2px is quite detailed.
+  const step = 2; 
+  
+  for (let i = 0; i < len; i += step) {
+     const p = pathEl.getPointAtLength(i);
+     points.push({ x: p.x, y: p.y });
+  }
+  // Make sure we get the very end
+  const last = pathEl.getPointAtLength(len);
+  points.push({ x: last.x, y: last.y });
+
+  document.body.removeChild(div);
+
+  return {
+    ...path,
+    points,
+    smoothing: 0, // Baked
+    style: path.style // Preserve style (crayon etc)
+  };
+};
+
+// Erase parts of a path that are inside the eraser circle
+// Returns an array of new paths (can be 0 if fully erased, 1 if touched/unaffected, or >1 if split)
+export const eraseFromPath = (path: PathData, center: Point, radius: number): PathData[] => {
+  // Ignore text for now - eraser only works on vector paths
+  if (path.type === 'text') return [path];
+
+  // Optimization: Check if path is even close to the eraser
+  const bbox = getBoundingBox(path.points);
+  // Add padding for stroke width?
+  const padding = (path.strokeWidth || 1) + radius; 
+  
+  if (
+    center.x + radius < bbox.x - padding ||
+    center.x - radius > bbox.x + bbox.w + padding ||
+    center.y + radius < bbox.y - padding ||
+    center.y - radius > bbox.y + bbox.h + padding
+  ) {
+    return [path];
+  }
+
+  // Bake path if it has smoothing, to prevent distortion of the curve
+  let targetPath = path;
+  if (path.smoothing && path.smoothing > 0) {
+      targetPath = bakePath(path);
+  }
+
+  const radiusSq = radius * radius;
+  const newPaths: PathData[] = [];
+  let currentPoints: Point[] = [];
+
+  const startNewPath = () => {
+    if (currentPoints.length >= 2) {
+      newPaths.push({
+        ...targetPath,
+        id: targetPath.id + '-' + Math.random().toString(36).substr(2, 5),
+        points: [...currentPoints]
+      });
+    }
+    currentPoints = [];
+  };
+
+  const points = targetPath.points;
+  if (points.length < 2) return [targetPath];
+
+  // Start with the first point
+  let isPrevInside = (points[0].x - center.x) ** 2 + (points[0].y - center.y) ** 2 < radiusSq;
+  if (!isPrevInside) {
+    currentPoints.push(points[0]);
+  }
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    
+    // Skip zero length segments to avoid division by zero in intersection calc
+    if (Math.abs(p1.x - p2.x) < 0.001 && Math.abs(p1.y - p2.y) < 0.001) {
+       continue;
+    }
+
+    // Check intersection with segment
+    const intersections = getCircleSegmentIntersections(p1, p2, center, radius);
+    const isNextInside = (p2.x - center.x) ** 2 + (p2.y - center.y) ** 2 < radiusSq;
+
+    if (intersections.length === 0) {
+      if (!isPrevInside) {
+         currentPoints.push(p2);
+      }
+    } else {
+      // Intersections found
+      for (const t of intersections) {
+        const ix = p1.x + t * (p2.x - p1.x);
+        const iy = p1.y + t * (p2.y - p1.y);
+        
+        if (currentPoints.length > 0) {
+           currentPoints.push({x: ix, y: iy});
+           startNewPath(); // Cut
+        } else {
+           currentPoints.push({x: ix, y: iy});
+        }
+      }
+      
+      if (!isNextInside) {
+        currentPoints.push(p2);
+      }
+    }
+    
+    isPrevInside = isNextInside;
+  }
+  
+  // Close any remaining path
+  startNewPath();
+
+  if (newPaths.length === 1 && newPaths[0].points.length === targetPath.points.length) {
+     return [targetPath];
+  }
+
+  return newPaths;
 };
 
 export const parseSvgToPaths = (svgString: string): { paths: PathData[], viewBox: { x: number, y: number, w: number, h: number } | null } => {

@@ -33,10 +33,10 @@
     <meta name="language" content="English">
     <link rel="canonical" href="https://vectorcraft.ai/">
 
-    <!-- Google Fonts - Inter -->
+    <!-- Google Fonts - Outfit + DM Sans + DM Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -44,21 +44,21 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'system-ui', 'sans-serif'],
+              sans: ['Outfit', 'system-ui', 'sans-serif'],
+              body: ['DM Sans', 'system-ui', 'sans-serif'],
+              mono: ['DM Mono', 'ui-monospace', 'monospace'],
             },
             colors: {
-              'bone': {
-                50: '#fafaf9',
-                100: '#f5f5f4',
-                200: '#e7e5e4',
-                300: '#d6d3d1',
-                400: '#a8a29e',
+              'warm-bg': '#F7F3F0',
+              'charcoal': '#111319',
+              'code-bg': '#020817',
+              'text-primary': '#17151A',
+              'cta-orange': {
+                DEFAULT: '#FF6B35',
+                hover: '#E65A2B',
               },
-              'grey-bg': {
-                900: '#18181b',
-                800: '#27272a',
-                700: '#3f3f46',
-              }
+              'accent-green': '#059669',
+              'accent-teal': '#0891B2',
             }
           }
         }
@@ -80,6 +80,47 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #4b5563;
       }
+
+      /* Hero Animation Keyframes */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeInScale {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @keyframes drawStroke {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+
+      /* Looping animation for the entire hero graphic */
+      .hero-graphic {
+        animation: heroLoop 8s ease-in-out infinite;
+      }
+
+      @keyframes heroLoop {
+        0%, 100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
     </style>
   <script type="importmap">
 {
@@ -94,7 +135,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-grey-bg-900 text-bone-100 overflow-hidden font-sans">
+  <body class="bg-warm-bg text-text-primary font-body">
     <div id="root"></div>
   <script type="module" src="/src/index.tsx"></script>
 </body>

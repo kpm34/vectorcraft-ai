@@ -3,8 +3,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { resolve, extname, basename } from 'path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { resolve, extname, basename, join } from 'path';
 
 const program = new Command();
 
@@ -17,11 +17,20 @@ interface ConvertOptions {
   colors?: number;
 }
 
+interface TextureOptions {
+  out?: string;
+  mode?: 'MATCAP' | 'PBR';
+  quality?: 'FAST' | 'HIGH';
+  resolution?: '1K' | '2K';
+  apiKey?: string;
+  apiUrl?: string;
+}
+
 async function convertImageToSvg(
   inputPath: string,
   options: ConvertOptions
 ): Promise<string> {
-  const apiUrl = options.apiUrl || process.env.VECTORCRAFT_API_URL || 'https://api.vectorcraft.ai';
+  const apiUrl = options.apiUrl || process.env.VECTORCRAFT_API_URL || 'http://localhost:3001/api';
   const apiKey = options.apiKey || process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -39,7 +48,7 @@ async function convertImageToSvg(
   const complexity = options.mode === 'logo-clean' || options.mode === 'icon' ? 'low' :
                      options.mode === 'illustration' ? 'high' : 'medium';
 
-  const response = await fetch(`${apiUrl}/convert`, {
+  const response = await fetch(`${apiUrl}/vector/convert`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -64,6 +73,53 @@ async function convertImageToSvg(
   return result.svg;
 }
 
+async function generateTexture(
+  prompt: string,
+  options: TextureOptions
+): Promise<{ albedo: Buffer; normal?: Buffer; roughness?: Buffer }> {
+  const apiUrl = options.apiUrl || process.env.VECTORCRAFT_API_URL || 'http://localhost:3001/api';
+  const apiKey = options.apiKey || process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error(
+      'API key required. Set GEMINI_API_KEY environment variable or use --api-key option.'
+    );
+  }
+
+  const response = await fetch(`${apiUrl}/texture/generate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      prompt,
+      mode: options.mode || 'MATCAP',
+      quality: options.quality || 'FAST',
+      resolution: options.resolution || '1K'
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`API request failed: ${error}`);
+  }
+
+  const result = await response.json();
+  
+  // Helper to decode base64 data URI
+  const decode = (dataUri: string) => {
+    const base64 = dataUri.replace(/^data:image\/\w+;base64,/, '');
+    return Buffer.from(base64, 'base64');
+  };
+
+  return {
+    albedo: decode(result.albedo),
+    normal: result.normal ? decode(result.normal) : undefined,
+    roughness: result.roughness ? decode(result.roughness) : undefined
+  };
+}
+
 function getMimeType(filePath: string): string {
   const ext = extname(filePath).toLowerCase();
   const mimeTypes: Record<string, string> = {
@@ -86,15 +142,16 @@ function getOutputPath(inputPath: string, outputPath?: string): string {
 
 program
   .name('svgify')
-  .description('VectorCraft AI CLI - Convert images to SVG')
+  .description('VectorCraft AI CLI - Convert images to SVG and Generate Textures')
   .version('1.0.0');
 
 program
-  .argument('<input>', 'Input image file (PNG, JPG, JPEG)')
+  .command('convert <input>')
+  .description('Convert an image to SVG')
   .option('-o, --out <path>', 'Output SVG file path')
   .option('-m, --mode <mode>', 'Conversion mode: logo-clean, icon, illustration, auto', 'auto')
   .option('-k, --api-key <key>', 'API key (or set GEMINI_API_KEY env var)')
-  .option('-u, --api-url <url>', 'API URL (default: https://api.vectorcraft.ai)')
+  .option('-u, --api-url <url>', 'API URL (default: http://localhost:3001/api)')
   .option('-q, --quality <quality>', 'Quality: low, medium, high', 'medium')
   .option('-c, --colors <number>', 'Max colors to extract', '8')
   .action(async (input: string, options: ConvertOptions) => {
@@ -131,6 +188,52 @@ program
   });
 
 program
+  .command('texture <prompt>')
+  .description('Generate a PBR or MatCap texture')
+  .option('-o, --out <dir>', 'Output directory (defaults to current dir)')
+  .option('-m, --mode <mode>', 'Mode: MATCAP or PBR', 'MATCAP')
+  .option('-q, --quality <quality>', 'Quality: FAST or HIGH', 'FAST')
+  .option('-r, --resolution <res>', 'Resolution: 1K or 2K', '1K')
+  .option('-k, --api-key <key>', 'API key (or set GEMINI_API_KEY env var)')
+  .option('-u, --api-url <url>', 'API URL (default: http://localhost:3001/api)')
+  .action(async (prompt: string, options: TextureOptions) => {
+    const spinner = ora(`Generating ${options.mode} texture for "${prompt}"...`).start();
+
+    try {
+      const result = await generateTexture(prompt, options);
+      const outDir = options.out ? resolve(options.out) : process.cwd();
+      
+      if (!existsSync(outDir)) {
+        mkdirSync(outDir, { recursive: true });
+      }
+
+      const safePrompt = prompt.replace(/[^a-z0-9]/gi, '_').toLowerCase().substring(0, 30);
+      
+      // Save Albedo
+      const albedoPath = join(outDir, `${safePrompt}_albedo.png`);
+      writeFileSync(albedoPath, result.albedo);
+      
+      let message = chalk.green(`✓ Generated successfully!\n`) +
+                    chalk.gray(`  Output: ${outDir}\n`);
+
+      if (options.mode === 'PBR' && result.normal && result.roughness) {
+        const normalPath = join(outDir, `${safePrompt}_normal.png`);
+        const roughnessPath = join(outDir, `${safePrompt}_roughness.png`);
+        writeFileSync(normalPath, result.normal);
+        writeFileSync(roughnessPath, result.roughness);
+        message += chalk.gray(`  Files:  ${safePrompt}_{albedo,normal,roughness}.png`);
+      } else {
+        message += chalk.gray(`  File:   ${safePrompt}_albedo.png`);
+      }
+
+      spinner.succeed(message);
+    } catch (error) {
+      spinner.fail(chalk.red(`Generation failed: ${(error as Error).message}`));
+      process.exit(1);
+    }
+  });
+
+program
   .command('batch <pattern>')
   .description('Convert multiple images matching a glob pattern')
   .option('-o, --out <dir>', 'Output directory')
@@ -140,4 +243,12 @@ program
     console.log(chalk.gray(`Pattern: ${pattern}`));
   });
 
-program.parse();
+// Handle default action (backward compatibility for converting just by providing a file)
+if (process.argv.length > 2 && !['convert', 'texture', 'batch', '--help', '-h', '--version', '-V'].includes(process.argv[2])) {
+  // If the first argument is a file, treat it as a convert command
+  const args = [...process.argv];
+  args.splice(2, 0, 'convert');
+  program.parse(args);
+} else {
+  program.parse();
+}

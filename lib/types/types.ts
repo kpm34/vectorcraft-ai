@@ -1,3 +1,7 @@
+// ============================================
+// Texture Studio Types
+// ============================================
+
 export enum TextureMode {
   MATCAP = 'MATCAP',
   PBR = 'PBR'
@@ -24,6 +28,48 @@ export interface GenerationConfig {
   mode: TextureMode;
   quality: ModelQuality;
 }
+
+// ============================================
+// SVG Editor Types
+// ============================================
+
+export enum Tool {
+  SELECT = 'SELECT',
+  PEN = 'PEN',
+  PENCIL = 'PENCIL',
+  CRAYON = 'CRAYON',
+  SHAPE = 'SHAPE',
+  TEXT = 'TEXT',
+  FILL = 'FILL',
+  ERASER = 'ERASER',
+  HAND = 'HAND',
+  LASSO = 'LASSO'
+}
+
+export type ShapeType = 'rectangle' | 'circle' | 'triangle' | 'polygon';
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface PathData {
+  id: string;
+  points: Point[];
+  stroke?: string;
+  strokeWidth?: number;
+  fill?: string;
+  closed?: boolean;
+  style?: 'solid' | 'crayon';
+  type?: 'text';
+  text?: string;
+  fontSize?: number;
+  fontFamily?: string;
+}
+
+// ============================================
+// Global Types
+// ============================================
 
 declare global {
   interface AIStudio {

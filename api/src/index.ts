@@ -4,6 +4,12 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { captureScreenshot, ScreenshotOptions } from './screenshot.js';
+import {
+  GeminiClient,
+  retryWithBackoff,
+  extractImageData as extractImageDataUtil,
+  GEMINI_CONFIG
+} from './geminiUtils.js';
 
 dotenv.config();
 
@@ -16,7 +22,7 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const genAI = new GoogleGenerativeAI(API_KEY);
+const genAI = GeminiClient.getInstance(API_KEY);
 
 // Middleware
 app.use(helmet());
@@ -81,13 +87,23 @@ app.get('/api/status', (req: Request, res: Response) => {
     status: 'operational',
     version: '1.0.0',
     endpoints: {
-      convert: '/api/convert',
+      vector: {
+        convert: '/api/vector/convert',
+        screenshot: '/api/vector/screenshot'
+      },
+      texture: {
+        generate: '/api/texture/generate'
+      },
       health: '/health'
     }
   });
 });
 
-app.post('/api/convert', rateLimit, async (req: Request, res: Response) => {
+// ====================
+// VECTOR STUDIO ENDPOINTS
+// ====================
+
+app.post('/api/vector/convert', rateLimit, async (req: Request, res: Response) => {
   try {
     const {
       image,
@@ -113,20 +129,24 @@ app.post('/api/convert', rateLimit, async (req: Request, res: Response) => {
       });
     }
 
-    // Generate SVG using Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-
+    // Generate SVG using Gemini with retry logic
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const prompt = buildPrompt(mode, complexity, maxColors);
 
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: image,
-          mimeType
-        }
-      }
-    ]);
+    const result = await retryWithBackoff(
+      async () => {
+        return await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: image,
+              mimeType
+            }
+          }
+        ]);
+      },
+      'SVG Conversion'
+    );
 
     const responseText = result.response.text();
     const svg = extractSvg(responseText);
@@ -154,7 +174,7 @@ app.post('/api/convert', rateLimit, async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/screenshot', rateLimit, async (req: Request, res: Response) => {
+app.post('/api/vector/screenshot', rateLimit, async (req: Request, res: Response) => {
   try {
     const {
       url,
@@ -205,6 +225,121 @@ app.post('/api/screenshot', rateLimit, async (req: Request, res: Response) => {
   }
 });
 
+// ====================
+// TEXTURE STUDIO ENDPOINTS
+// ====================
+
+interface TextureGenerateRequest {
+  prompt: string;
+  mode: 'MATCAP' | 'PBR';
+  quality: 'FAST' | 'HIGH';
+  resolution?: '1K' | '2K';
+}
+
+interface TextureGenerateResponse {
+  albedo: string; // Base64 data URI
+  normal?: string; // Base64 data URI (PBR only)
+  roughness?: string; // Base64 data URI (PBR only)
+  metadata: {
+    mode: string;
+    resolution: string;
+    timestamp: number;
+  };
+}
+
+app.post('/api/texture/generate', rateLimit, async (req: Request, res: Response) => {
+  try {
+    const {
+      prompt,
+      mode = 'MATCAP',
+      quality = 'FAST',
+      resolution = '1K'
+    }: TextureGenerateRequest = req.body;
+
+    // Validate request
+    if (!prompt || prompt.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Missing required field: prompt'
+      });
+    }
+
+    if (!['MATCAP', 'PBR'].includes(mode)) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Invalid mode. Must be MATCAP or PBR'
+      });
+    }
+
+    // Select model based on quality/resolution
+    const modelName = (quality === 'HIGH' || resolution === '2K')
+      ? 'gemini-3-pro-image-preview'
+      : 'gemini-2.5-flash-image';
+
+    console.log(`[Texture] Generating ${mode} texture: "${prompt}" using ${modelName} at ${resolution}`);
+
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    // Generate albedo/base texture with retry logic
+    const albedoPrompt = mode === 'MATCAP'
+      ? `A high-quality 3D material capture (MatCap) sphere of ${prompt}. The image should be a single perfectly round sphere centered on a pitch black background, showcasing the lighting, reflection, and material properties cleanly. No other objects or background details.`
+      : `A high-quality, seamless, top-down, flat texture pattern of ${prompt}. Even lighting, no shadows from external objects, tileable, 4k texture quality.`;
+
+    const albedoResult = await retryWithBackoff(
+      async () => await model.generateContent([albedoPrompt]),
+      `${mode} Albedo Generation`
+    );
+    const albedoData = extractImageDataUtil(albedoResult.response);
+
+    if (!albedoData) {
+      throw new Error('Failed to generate albedo texture');
+    }
+
+    const response: TextureGenerateResponse = {
+      albedo: `data:image/png;base64,${albedoData}`,
+      metadata: {
+        mode,
+        resolution,
+        timestamp: Date.now()
+      }
+    };
+
+    // Generate normal and roughness maps for PBR mode with retry logic
+    if (mode === 'PBR') {
+      // Normal map
+      const normalPrompt = `A seamless normal map texture for ${prompt}. Purple/blue tones representing surface normals, tileable, high detail.`;
+      const normalResult = await retryWithBackoff(
+        async () => await model.generateContent([normalPrompt]),
+        'PBR Normal Map Generation'
+      );
+      const normalData = extractImageDataUtil(normalResult.response);
+      if (normalData) {
+        response.normal = `data:image/png;base64,${normalData}`;
+      }
+
+      // Roughness map
+      const roughnessPrompt = `A seamless roughness/specular map texture for ${prompt}. Grayscale image showing surface roughness variation, tileable, high contrast.`;
+      const roughnessResult = await retryWithBackoff(
+        async () => await model.generateContent([roughnessPrompt]),
+        'PBR Roughness Map Generation'
+      );
+      const roughnessData = extractImageDataUtil(roughnessResult.response);
+      if (roughnessData) {
+        response.roughness = `data:image/png;base64,${roughnessData}`;
+      }
+    }
+
+    console.log(`[Texture] Successfully generated ${mode} texture`);
+    res.json(response);
+  } catch (error) {
+    console.error('[Texture] Generation error:', error);
+    res.status(500).json({
+      error: 'Texture Generation Failed',
+      message: (error as Error).message
+    });
+  }
+});
+
 // Helper functions
 
 function buildPrompt(mode: string, complexity: string, maxColors: number): string {
@@ -240,7 +375,12 @@ function extractSvg(text: string): string | null {
 app.listen(PORT, () => {
   console.log(`🚀 VectorCraft API running on port ${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
-  console.log(`📍 API endpoint: http://localhost:${PORT}/api/convert`);
+  console.log(`📍 Status: http://localhost:${PORT}/api/status`);
+  console.log(`\n🎨 Vector Studio Endpoints:`);
+  console.log(`   • Convert: http://localhost:${PORT}/api/vector/convert`);
+  console.log(`   • Screenshot: http://localhost:${PORT}/api/vector/screenshot`);
+  console.log(`\n🖼️  Texture Studio Endpoints:`);
+  console.log(`   • Generate: http://localhost:${PORT}/api/texture/generate`);
 });
 
 export default app;
